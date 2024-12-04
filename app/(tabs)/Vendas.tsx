@@ -4,38 +4,72 @@ import { Pedidos } from '@/components/interface/Pedidos';
 
 const Vendas: React.FC = () => {
   const [pedidos, setPedidos] = useState<Pedidos[]>([]);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Pedidos>({
+    id: 0,
+    cliente: '',
     pedido: '',
     quantidade: '',
   });
   const [modalVisible, setModalVisible] = useState(false);
+  const [editMode, setEditMode] = useState(false); 
 
   const handleInputChange = (name: string, value: string) => {
     setFormData({ ...formData, [name]: value });
   };
 
   const handleAddPedido = () => {
-    if (!formData.pedido || !formData.quantidade) {
+    if (!formData.cliente || !formData.pedido || !formData.quantidade) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos!');
       return;
     }
 
-    const novoPedido: Pedidos = {
-      id: pedidos.length + 1,
-      pedido: formData.pedido,
-      quantidade: parseInt(formData.quantidade, 10),
-    };
+    if (editMode) {
+      setPedidos(
+        pedidos.map((pedido) =>
+          pedido.id === formData.id ? { ...formData } : pedido
+        )
+      );
+    } else {
+      
+      setPedidos([
+        ...pedidos,
+        { ...formData, id: pedidos.length + 1 },
+      ]);
+    }
 
-    setPedidos([...pedidos, novoPedido]);
-    setFormData({ pedido: '', quantidade: '' });
+    resetForm();
+  };
+
+  const handleDeletePedido = () => {
+    setPedidos(pedidos.filter((pedido) => pedido.id !== formData.id));
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setFormData({ id: 0, cliente: '', pedido: '', quantidade: '' });
     setModalVisible(false);
+    setEditMode(false);
+
+  };
+
+  const openModal = (pedido?: Pedidos) => {
+    if (pedido) {
+      setFormData(pedido);
+      setEditMode(true);
+    } else {
+      setFormData({ id: 0, cliente: '', pedido: '', quantidade: '' });
+      setEditMode(false);
+    }
+    setModalVisible(true);
   };
 
   const renderPedido = ({ item }: { item: Pedidos }) => (
+  <TouchableOpacity onPress={() => openModal(item)}>
     <View style={styles.pedidoCard}>
       <Text style={styles.pedidoTitulo}>{item.pedido}</Text>
       <Text>Quantidade: {item.quantidade}</Text>
     </View>
+  </TouchableOpacity>
   );
 
   return (
@@ -44,7 +78,7 @@ const Vendas: React.FC = () => {
 
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() => setModalVisible(true)}
+        onPress={() => openModal()}
       >
         <Text style={styles.addButtonText}>+ Adicionar Pedido</Text>
       </TouchableOpacity>
@@ -60,11 +94,20 @@ const Vendas: React.FC = () => {
         visible={modalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={resetForm}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Adicionar Pedido</Text>
+            <Text style={styles.modalTitle}>
+              {editMode ? 'Editar Pedido' : 'Adicionar Pedido'} 
+            </Text>
+
+            <TextInput
+              placeholder="Cliente"
+              value={formData.cliente}
+              onChangeText={(value) => handleInputChange('cliente', value)}
+              style={styles.input}
+            />
 
             <TextInput
               placeholder="Pedido"
@@ -81,13 +124,16 @@ const Vendas: React.FC = () => {
             />
 
             <View style={styles.modalButtons}>
-              <Button
-                title="Cancelar"
-                onPress={() => setModalVisible(false)}
-                color="#FF4D4D"
-              />
-              <Button title="Adicionar" onPress={handleAddPedido} />
-            </View>
+              <Button title="Salvar" onPress={handleAddPedido} color="#099000" />
+              <Button title="Cancelar" onPress={resetForm} color="#F9900D" />
+              {editMode && (
+                <Button
+                  title="Deletar"
+                  onPress={handleDeletePedido}
+                  color="#FF4D4D"
+                />
+            )}
+          </View>
           </View>
         </View>
       </Modal>

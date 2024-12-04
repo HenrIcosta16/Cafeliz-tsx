@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Button, Modal, StyleSheet, FlatList, TouchableOpacity, Alert, Image } from 'react-native';
 import { Produto } from '@/components/interface/Produto';
 
-
 const Cardapio: React.FC = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Produto>({
+    id: 0,
     titulo: '',
     descricao: '',
     valor: '',
     imagemUrl: '',
   });
   const [modalVisible, setModalVisible] = useState(false);
+  //new
+  const [editMode, setEditMode] = useState(false); 
 
   const handleInputChange = (name: string, value: string) => {
     setFormData({ ...formData, [name]: value });
@@ -22,36 +24,66 @@ const Cardapio: React.FC = () => {
       Alert.alert('Erro', 'Por favor, preencha todos os campos obrigatórios!');
       return;
     }
+    
+    //new
+    if (editMode) {
+      setProdutos(
+        produtos.map((produto) =>
+          produto.id === formData.id ? { ...formData } : produto
+        )
+      );
+    } else {
+      setProdutos([
+        ...produtos,
+        { ...formData, id: produtos.length + 1 },
+      ]);
+    }
 
-    const novoProduto: Produto = {
-      id: produtos.length + 1,
-      ...formData,
-    };
+    resetForm();
+  };
 
-    setProdutos([...produtos, novoProduto]);
-    setFormData({ titulo: '', descricao: '', valor: '', imagemUrl: '' });
+  const handleDeleteProduto = () => {
+    setProdutos(produtos.filter((produto) => produto.id !== formData.id));
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setFormData({ id: 0, titulo: '', descricao: '', valor: '', imagemUrl: '' });
     setModalVisible(false);
+    setEditMode(false);
+  };
+
+  const openModal = (produto?: Produto) => {
+    if (produto) {
+      setFormData(produto);
+      setEditMode(true);
+    } else {
+      setFormData({ id: 0, titulo: '', descricao: '', valor: '', imagemUrl: '' });
+      setEditMode(false);
+    }
+    setModalVisible(true);
   };
 
   const renderProduto = ({ item }: { item: Produto }) => (
-    <View style={styles.produtoCard}>
-      <View style={styles.cardContent}>
-        {item.imagemUrl ? (
-          <Image 
-            source={{ uri: item.imagemUrl }} 
-            style={styles.produtoImagem}
-            resizeMode="cover" 
-          />
-        ) : (
-          <View style={styles.placeholderImage} />
-        )}
-        <View style={styles.cardDetails}>
-          <Text style={styles.produtoTitulo}>{item.titulo}</Text>
-          <Text>{item.descricao}</Text>
-          <Text>R$ {item.valor}</Text>
+    <TouchableOpacity onPress={() => openModal(item)}>
+      <View style={styles.produtoCard}>
+        <View style={styles.cardContent}>
+          {item.imagemUrl ? (
+            <Image
+              source={{ uri: item.imagemUrl }}
+              style={styles.produtoImagem}
+            />
+          ) : (
+            <View style={styles.placeholderImage} />
+          )}
+          <View style={styles.cardDetails}>
+            <Text style={styles.produtoTitulo}>{item.titulo}</Text>
+            <Text>{item.descricao}</Text>
+            <Text>R$ {item.valor}</Text>
+          </View>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -60,7 +92,7 @@ const Cardapio: React.FC = () => {
 
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() => setModalVisible(true)}
+        onPress={() => openModal()}
       >
         <Text style={styles.addButtonText}>+ Adicionar Produto</Text>
       </TouchableOpacity>
@@ -70,18 +102,19 @@ const Cardapio: React.FC = () => {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderProduto}
         ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto cadastrado.</Text>}
-        style={{ pointerEvents: 'auto' }} 
       />
 
       <Modal
         visible={modalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={resetForm}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Adicionar Produto</Text>
+            <Text style={styles.modalTitle}>
+              {editMode ? 'Editar Produto' : 'Adicionar Produto'}
+            </Text>
 
             <TextInput
               placeholder="Título"
@@ -109,9 +142,15 @@ const Cardapio: React.FC = () => {
               style={styles.input}
             />
             <View style={styles.modalButtons}>
-              <Button title="Cancelar" onPress={() => setModalVisible(false)} 
-               color="#FF4D4D" />
-              <Button title="Adicionar" onPress={handleAddProduto} />
+              <Button title="Salvar" onPress={handleAddProduto} color="#099000" />
+              <Button title="Cancelar" onPress={resetForm} color="#F9900D" />
+              {editMode && (
+                <Button
+                  title="Deletar"
+                  onPress={handleDeleteProduto}
+                  color="#FF4D4D"
+                />
+              )}
             </View>
           </View>
         </View>
@@ -219,3 +258,4 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 });
+/** comentario para eu lembrar que devo separar a lista do cardapio **/
