@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import {View,Text,TextInput,Button,Modal,StyleSheet,FlatList,TouchableOpacity,Alert,} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, Modal, StyleSheet, FlatList, TouchableOpacity, Alert, Image } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; 
+import * as Location from 'expo-location';
 import { Pedidos } from '@/components/interface/Pedidos';
 
 const Vendas: React.FC = () => {
@@ -11,7 +13,61 @@ const Vendas: React.FC = () => {
     quantidade: '',
   });
   const [modalVisible, setModalVisible] = useState(false);
-  const [editMode, setEditMode] = useState(false); 
+  const [editMode, setEditMode] = useState(false);
+  const [location, setLocation] = useState<string>('');
+
+  const loadPedidos = async () => {
+    try {
+      const storedPedidos = await AsyncStorage.getItem('@pedidos');
+      if (storedPedidos) {
+        setPedidos(JSON.parse(storedPedidos));
+      }
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível carregar os pedidos armazenados.');
+    }
+  };
+
+
+  const savePedidos = async (pedidos: Pedidos[]) => {
+    try {
+      await AsyncStorage.setItem('@pedidos', JSON.stringify(pedidos));
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível salvar os pedidos.');
+    }
+  };
+
+  
+  useEffect(() => {
+    loadPedidos();
+  }, []);
+
+  
+  useEffect(() => {
+    savePedidos(pedidos);
+  }, [pedidos]);
+
+  
+  const getLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão negada', 'Não foi possível acessar sua localização.');
+        return;
+      }
+
+      const currentLocation = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = currentLocation.coords;
+      setLocation(`Lat: ${latitude}, Lng: ${longitude}`);
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível obter sua localização.');
+    }
+  };
+
+  
+  useEffect(() => {
+    getLocation();
+  }, []);
+  
 
   const handleInputChange = (name: string, value: string) => {
     setFormData({ ...formData, [name]: value });
@@ -30,7 +86,6 @@ const Vendas: React.FC = () => {
         )
       );
     } else {
-      
       setPedidos([
         ...pedidos,
         { ...formData, id: pedidos.length + 1 },
@@ -49,7 +104,6 @@ const Vendas: React.FC = () => {
     setFormData({ id: 0, cliente: '', pedido: '', quantidade: '' });
     setModalVisible(false);
     setEditMode(false);
-
   };
 
   const openModal = (pedido?: Pedidos) => {
@@ -64,17 +118,18 @@ const Vendas: React.FC = () => {
   };
 
   const renderPedido = ({ item }: { item: Pedidos }) => (
-  <TouchableOpacity onPress={() => openModal(item)}>
-    <View style={styles.pedidoCard}>
-      <Text style={styles.pedidoTitulo}>{item.pedido}</Text>
-      <Text>Quantidade: {item.quantidade}</Text>
-    </View>
-  </TouchableOpacity>
+    <TouchableOpacity onPress={() => openModal(item)}>
+      <View style={styles.pedidoCard}>
+        <Text style={styles.pedidoTitulo}>{item.pedido}</Text>
+        <Text>Quantidade: {item.quantidade}</Text>
+      </View>
+    </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Lista de Pedidos</Text>
+      <Text style={styles.locationText}>Localização: {location || 'Obtendo localização...'}</Text>
 
       <TouchableOpacity
         style={styles.addButton}
@@ -99,7 +154,7 @@ const Vendas: React.FC = () => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {editMode ? 'Editar Pedido' : 'Adicionar Pedido'} 
+              {editMode ? 'Editar Pedido' : 'Adicionar Pedido'}
             </Text>
 
             <TextInput
@@ -132,8 +187,8 @@ const Vendas: React.FC = () => {
                   onPress={handleDeletePedido}
                   color="#FF4D4D"
                 />
-            )}
-          </View>
+              )}
+            </View>
           </View>
         </View>
       </Modal>
@@ -217,4 +272,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 10,
   },
+  locationText: {
+    fontSize: 16, 
+    fontWeight: 'bold',
+    color: '#333', 
+    marginBottom: 10, 
+    textAlign: 'center', 
+    backgroundColor: '#f9f9f9', 
+    padding: 10, 
+    borderRadius: 5, 
+  },
+  
 });

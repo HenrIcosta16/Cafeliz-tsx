@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, Modal, StyleSheet, FlatList, TouchableOpacity, Alert, Image } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 import { Produto } from '@/components/interface/Produto';
 
 const Cardapio: React.FC = () => {
@@ -12,8 +14,61 @@ const Cardapio: React.FC = () => {
     imagemUrl: '',
   });
   const [modalVisible, setModalVisible] = useState(false);
-  //new
-  const [editMode, setEditMode] = useState(false); 
+  const [editMode, setEditMode] = useState(false);
+  const [location, setLocation] = useState<string>('');
+
+  
+  const loadProdutos = async () => {
+    try {
+      const storedProdutos = await AsyncStorage.getItem('@produtos');
+      if (storedProdutos) {
+        setProdutos(JSON.parse(storedProdutos));
+      }
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível carregar os produtos armazenados.');
+    }
+  };
+
+  
+  const saveProdutos = async (produtos: Produto[]) => {
+    try {
+      await AsyncStorage.setItem('@produtos', JSON.stringify(produtos));
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível salvar os produtos.');
+    }
+  };
+
+  
+  useEffect(() => {
+    loadProdutos();
+  }, []);
+
+  
+  useEffect(() => {
+    saveProdutos(produtos);
+  }, [produtos]);
+
+  
+  const getLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão negada', 'Não foi possível acessar sua localização.');
+        return;
+      }
+
+      const currentLocation = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = currentLocation.coords;
+      setLocation(`Lat: ${latitude}, Lng: ${longitude}`);
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível obter sua localização.');
+    }
+  };
+
+  
+  useEffect(() => {
+    getLocation();
+  }, []);
 
   const handleInputChange = (name: string, value: string) => {
     setFormData({ ...formData, [name]: value });
@@ -24,8 +79,7 @@ const Cardapio: React.FC = () => {
       Alert.alert('Erro', 'Por favor, preencha todos os campos obrigatórios!');
       return;
     }
-    
-    //new
+
     if (editMode) {
       setProdutos(
         produtos.map((produto) =>
@@ -89,6 +143,7 @@ const Cardapio: React.FC = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Lista de Produtos</Text>
+      <Text style={styles.locationText}>Localização: {location || 'Obtendo localização...'}</Text>
 
       <TouchableOpacity
         style={styles.addButton}
@@ -159,7 +214,7 @@ const Cardapio: React.FC = () => {
   );
 };
 
-export default Cardapio;
+export default Cardapio
 
 const styles = StyleSheet.create({
   container: {
@@ -257,5 +312,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 10,
   },
+  locationText: {
+    fontSize: 16, 
+    fontWeight: 'bold',
+    color: '#333', 
+    marginBottom: 10, 
+    textAlign: 'center', 
+    backgroundColor: '#f9f9f9', 
+    padding: 10, 
+    borderRadius: 5, 
+  },
+  
 });
+
 /** comentario para eu lembrar que devo separar a lista do cardapio **/
